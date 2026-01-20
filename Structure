@@ -1,0 +1,13 @@
+BuzzIntell/
+├── buzzintell_liftoff.sh        # Execution engine (verified)
+├── core/
+│   └── buzz.keystore            # Signing anchor (generated)
+├── flows/
+│   └── BuzzStripFlow/           # Optional APK flow
+├── artifacts/
+│   └── final-aligned.apk        # Output evidence
+├── env/
+│   ├── fingerprint.env          # Environment proof
+│   └── toolchain.txt            # Declarative tooling
+├── logs/
+└── docs/
