@@ -1,0 +1,167 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+# ============================================================
+# BuzzIntell Deep Matter — Termux Compliance + Modular Liftoff
+# One-shot setup for Android Termux environment
+# ============================================================
+
+STAMP="$(date '+%Y-%m-%d_%H%M%S')"
+ROOT="$HOME/BuzzIntell"
+BIN="$ROOT/bin"
+MOD="$ROOT/modules"
+LOG="$ROOT/logs"
+CFG="$ROOT/config"
+DOC="$ROOT/docs"
+
+say() { printf "%s\n" "$*"; }
+hr()  { printf "%s\n" "============================================================"; }
+
+hr
+say "[BuzzIntell] Deep Matter Liftoff — $STAMP"
+hr
+
+# ---- 0) Ensure Termux cache directories exist (fix pkgcache.bin errors) ----
+say "[0/9] Repairing Termux APT cache directories (if missing)..."
+mkdir -p /data/data/com.termux/cache/apt/archives/partial || true
+mkdir -p /data/data/com.termux/files/usr/var/lib/apt/lists/partial || true
+
+# ---- 1) Core update ----
+say "[1/9] Updating packages..."
+pkg update -y
+pkg upgrade -y
+
+# ---- 2) Repos (non-destructive: only enables if not already enabled) ----
+say "[2/9] Enabling common Termux repos (if needed)..."
+pkg install -y root-repo x11-repo || true
+
+# ---- 3) Baseline toolchain (BuzzIntell-ready) ----
+say "[3/9] Installing baseline toolchain..."
+pkg install -y \
+  git openssh curl wget ca-certificates \
+  python nodejs \
+  jq yq \
+  vim nano tmux \
+  zip unzip tar \
+  findutils coreutils diffutils \
+  grep sed gawk \
+  openssl \
+  net-tools iproute2 dnsutils \
+  nmap \
+  termux-api || true
+
+# ---- 4) Create BuzzIntell Deep Matter modular layout ----
+say "[4/9] Creating BuzzIntell modular layout..."
+mkdir -p "$BIN" "$MOD" "$LOG" "$CFG" "$DOC"
+mkdir -p "$MOD"/{00_core,10_intel,20_net,30_build,40_android,90_ops}
+
+# ---- 5) Drop modules (safe by default) ----
+
+# 5a) Core env module
+cat > "$MOD/00_core/env.sh" <<'EOF'
+# BuzzIntell — Core Environment
+export BUZZINTELL_HOME="$HOME/BuzzIntell"
+export PATH="$BUZZINTELL_HOME/bin:$PATH"
+export BUZZINTELL_LOG="$BUZZINTELL_HOME/logs"
+export BUZZINTELL_CFG="$BUZZINTELL_HOME/config"
+EOF
+
+# 5b) Android launcher helpers (so MainActivity strings stop being treated like commands)
+cat > "$MOD/40_android/android_tools.sh" <<'EOF'
+# BuzzIntell — Android / Termux bridge helpers (safe)
+# Use these to launch installed Android apps from Termux.
+
+buzz.app() {
+  # Usage:
+  #   buzz.app <package>
+  #   buzz.app <package> <activity>
+  # Examples:
+  #   buzz.app coded.toolbox.termuxscriptlibrary
+  #   buzz.app coded.toolbox.termuxscriptlibrary coded.toolbox.termuxscriptlibrary.MainActivity
+  local pkg="${1:-}"
+  local act="${2:-}"
+  if [ -z "$pkg" ]; then
+    echo "Usage: buzz.app <package> [activityClass]"
+    return 2
+  fi
+
+  if command -v am >/dev/null 2>&1; then
+    if [ -n "$act" ]; then
+      am start -n "${pkg}/${act}" >/dev/null 2>&1 || {
+        echo "Failed to start: ${pkg}/${act}"
+        echo "Tip: Try without activity: buzz.app ${pkg}"
+        return 1
+      }
+    else
+      monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || {
+        echo "Failed to launch package: ${pkg}"
+        echo "Tip: Confirm it is installed: pm list packages | grep -F ${pkg}"
+        return 1
+      }
+    fi
+    echo "Launched: $pkg ${act:+($act)}"
+  else
+    echo "Android 'am' not found on PATH. This is unusual on Android."
+    return 1
+  fi
+}
+
+buzz.pmfind() {
+  # Find installed packages by substring
+  # Usage: buzz.pmfind termux
+  local q="${1:-}"
+  if [ -z "$q" ]; then
+    echo "Usage: buzz.pmfind <substring>"
+    return 2
+  fi
+  pm list packages | grep -i -- "$q" || true
+}
+
+buzz.activityhint() {
+  cat <<'TXT'
+If you see something like:
+  coded.toolbox.termuxscriptlibrary.MainActivity@b11fb7
+That is an Android Activity instance reference, not a Termux command.
+
+Correct flow:
+  1) Install the app (Play Store or APK).
+  2) Launch it from Termux:
+     buzz.app coded.toolbox.termuxscriptlibrary
+  3) If you truly need an Activity class:
+     buzz.app coded.toolbox.termuxscriptlibrary coded.toolbox.termuxscriptlibrary.MainActivity
+
+To confirm install:
+  pm list packages | grep -i coded.toolbox
+TXT
+}
+EOF
+
+# 5c) Safe network self-audit module (no stealth/evasion)
+cat > "$MOD/20_net/net_audit.sh" <<'EOF'
+# BuzzIntell — Network self-audit (SAFE DEFAULTS)
+# These commands are for auditing your own device / your own LAN.
+# No spoofing, no evasion, no unauthorized scanning.
+
+buzz.net.local() {
+  echo "== Interfaces =="
+  ip addr || true
+  echo
+  echo "== Routes =="
+  ip route || true
+  echo
+  echo "== DNS =="
+  getprop | grep -i dns || true
+}
+
+buzz.net.lansweep() {
+  # Usage: buzz.net.lansweep 192.168.0.0/24
+  local cidr="${1:-}"
+  if [ -z "$cidr" ]; then
+    echo "Usage: buzz.net.lansweep <CIDR>   (example: 192.168.0.0/24)"
+    return 2
+  fi
+  nmap -sn "$cidr"
+}
+
+buzz.net.hostcheck() {
+  # Usage: buzz.net.hostcheck 192.168.0.1
