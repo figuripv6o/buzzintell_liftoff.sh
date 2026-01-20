@@ -1,0 +1,23 @@
+┌────────────────────────────────────────────┐
+│ Reference Layer (Read-Only)                │
+│ Termux PowerTools / Termux Dictionary      │
+│ Offline knowledge only                    │
+└────────────────────────────────────────────┘
+                ↓ human reads
+┌────────────────────────────────────────────┐
+│ Runtime Layer (Authoritative)              │
+│ Real Termux (F-Droid / GitHub)             │
+│ pkg / bash / python / java                 │
+└────────────────────────────────────────────┘
+                ↓ script executes
+┌────────────────────────────────────────────┐
+│ Orchestration Layer (BuzzIntell)           │
+│ buzzintell_liftoff.sh                      │
+│ BuzzStripFlow (optional)                   │
+└────────────────────────────────────────────┘
+                ↓ proof generated
+┌────────────────────────────────────────────┐
+│ Evidence Layer (Deep-Matter)               │
+│ fingerprints / manifests / artifacts       │
+│ Git-tracked                               │
+└────────────────────────────────────────────┘
